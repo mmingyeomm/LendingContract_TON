@@ -20,7 +20,7 @@ export class Hello implements Contract {
         return new Hello(address);
     }
 
-    static createFromConfig(config: HelloConfig, code: Cell, workchain = 0) {
+    static createFromConfig(config: HelloConfig, code: Cell, workchain = 0) : Hello {
         const data = helloConfigToCell(config);
         const init = { code, data };
         return new Hello(contractAddress(workchain, init), init);
