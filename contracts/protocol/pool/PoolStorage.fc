@@ -3,6 +3,7 @@
 ;; Storage variables
 global slice stored_user_address;
 global int stored_user_amount;
+global int flag; 
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
