@@ -1,65 +1,58 @@
 #include "../../imports/stdlib.fc";
+#include "../logic/calculate_supply.fc";
 
-;; Storage variables
-global slice stored_user_address;
-global int stored_user_amount;
-
-;; load_data populates storage variables using stored data
-() load_data() impure {
-    var ds = get_data().begin_parse();
-
-    ;; Load stored user address and amount
-    stored_user_address = ds~load_ref().begin_parse(); ;; Correctly load a reference and parse it
-    stored_user_amount = ds~load_uint(64);
-
-    ds.end_parse();
+;; Load the storage
+(cell) load_storage() inline {
+    slice ds = get_data().begin_parse();
+    if (ds.slice_empty?()) {
+        ;; If storage is empty, return new empty dictionary
+        return new_dict();
+    }
+    return ds~load_dict();
 }
 
-;; save_data stores storage variables as a cell into persistent storage
-() save_data(slice user_address, int user_amount) impure {
+() save_storage(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) {
+    ;; Parse sender address from message
+    slice cs = in_msg_full.begin_parse();
+    cs~skip_bits(4); ;; skip flags
+    slice sender_address = cs~load_msg_addr();
+    
+    ;; Load existing dictionary
+    cell dict = load_storage();
+    
+    ;; Get existing supply for this address if any
+    (slice value, int success) = dict.udict_get?(256, sender_address.preload_uint(256));
+    int current_supply = 0;
+    if (success) {
+        current_supply = value~load_coins();
+    }
+    
+    ;; Add new supply to existing amount
+    int new_supply = current_supply + msg_value;
+    
+    ;; Store updated supply amount
+    dict~udict_set(
+        256, ;; key length for address (256 bits)
+        sender_address.preload_uint(256), ;; address as key
+        begin_cell().store_coins(new_supply).end_cell().begin_parse() ;; store amount as coins
+    );
+    
+    ;; Save updated dictionary to storage
     set_data(
         begin_cell()
-            .store_ref(begin_cell().store_slice(user_address).end_cell()) ;; Store the user address in a reference
-            .store_uint(user_amount, 64) ;; Store the user amount
+            .store_dict(dict)
         .end_cell()
     );
+    
+    return();
 }
 
-;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
-() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) { ;; Ignore all empty messages
-        return ();
+;; Helper function to get user's supply
+(int) get_user_supply(slice user_address) inline {
+    cell dict = load_storage();
+    (slice value, int success) = dict.udict_get?(256, user_address.preload_uint(256));
+    if (success == 0) {
+        return 0;
     }
-
-    ;; Parse the incoming message
-    slice cs = in_msg_full.begin_parse();
-
-    ;; Load the flags (first 4 bits of the header)
-    int flags = cs~load_uint(4);
-    if (flags & 1) { ;; Ignore all bounced messages
-        return ();
-    }
-
-    ;; Extract the sender's address from the message header
-    slice sender_address = cs~load_msg_addr(); ;; This is the sender's address
-
-    ;; Load the existing data
-    load_data();
-
-    ;; Update the total amount by adding the current message's value
-    stored_user_amount = stored_user_amount + msg_value;
-
-    ;; Save the updated data
-    save_data(sender_address, stored_user_amount);
-}
-
-;; Getter method to fetch supply cell data
-(cell, slice, int) get_supply() method_id {
-    load_data(); ;; Load the stored data into memory
-
-    ;; Return the supply cell and its components
-    return (begin_cell()
-                .store_ref(begin_cell().store_slice(stored_user_address).end_cell()) ;; Store the user address in a reference
-                .store_uint(stored_user_amount, 64)
-            .end_cell(), stored_user_address, stored_user_amount);
+    return value~load_coins();
 }

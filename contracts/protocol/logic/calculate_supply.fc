@@ -1,0 +1,5 @@
+
+
+int return_ltv(){
+    return 70;
+}

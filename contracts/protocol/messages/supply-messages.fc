@@ -1,0 +1,17 @@
+
+(int, int, int, int, int, int, int, int, int, int, int, cell) parse_supply_user_message(slice cs) {
+	return (
+		cs~load_asset_id(),
+		cs~load_amount(),
+		cs~load_sb_rate(),
+		cs~load_sb_rate(),
+		cs~load_uint(64),
+		cs~load_uint(64),
+		cs~load_principal(),
+		cs~load_principal(),
+		cs~load_tracking_index(),
+		cs~load_tracking_index(),
+		cs~load_amount(),
+		cs~load_ref()
+	);
+}
