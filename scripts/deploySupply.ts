@@ -11,11 +11,12 @@ export async function run(provider: NetworkProvider) {
     );
 
 
-    // await supply.sendDeploy(provider.sender(), toNano('0.01'));
+    await supply.sendDeploy(provider.sender(), toNano('0.01'));
 
 
-    // await provider.waitForDeploy(supply.address);
+    await provider.waitForDeploy(supply.address);
 
+    // await supply.sendSupply(provider.sender(), toNano('0.05'))
 
     // Supply TON
 
@@ -24,5 +25,8 @@ export async function run(provider: NetworkProvider) {
 
     // console.log(getResult);
 
+
+    const getResult = await supply.getLTV();
+    console.log(getResult);
 
 }

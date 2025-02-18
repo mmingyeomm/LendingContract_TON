@@ -6,9 +6,13 @@ import {
     contractAddress, 
     ContractProvider, 
     Sender, 
-    SendMode,
-    toNano 
+    SendMode 
 } from "@ton/core";
+
+// Operation codes matching the contract
+const OpCodes = {
+    SupplyPool: 1
+} as const;
 
 export class Supply implements Contract {
     constructor(
@@ -21,7 +25,7 @@ export class Supply implements Contract {
     }
 
     static createFromCode(code: Cell, workchain = 0): Supply {
-        const data = beginCell().endCell(); // Empty initial data
+        const data = beginCell().endCell();
         const init = { code, data };
         return new Supply(contractAddress(workchain, init), init);
     }
@@ -46,15 +50,29 @@ export class Supply implements Contract {
         return result.stack.readBigNumber();
     }
 
+    async getLTV(
+        provider: ContractProvider,
+    ): Promise<bigint> {
+        
+        const result = await provider.get('ltv', []);
+        
+        return result.stack.readBigNumber();
+    }
+
+
+
     async sendSupply(
         provider: ContractProvider,
-
+        via: Sender,
+        amount: bigint
     ) {
         await provider.internal(via, {
             value: amount,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            // We don't need to add any data to body since the contract will use msg_value
-            body: beginCell().endCell(),
+            body: beginCell()
+                .storeUint(OpCodes.SupplyPool, 32) // Store the operation code
+                .endCell(),
         });
     }
 }
+

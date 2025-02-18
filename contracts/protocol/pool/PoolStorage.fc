@@ -56,3 +56,8 @@
     }
     return value~load_coins();
 }
+
+
+(int) get_ltv() inline {
+    return return_ltv();
+}
