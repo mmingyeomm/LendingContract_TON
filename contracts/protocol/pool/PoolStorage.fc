@@ -3,7 +3,6 @@
 ;; Storage variables
 global slice stored_user_address;
 global int stored_user_amount;
-global int flag; 
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
@@ -44,8 +43,14 @@ global int flag;
     ;; Extract the sender's address from the message header
     slice sender_address = cs~load_msg_addr(); ;; This is the sender's address
 
-    ;; Save the sender's address and message value
-    save_data(sender_address, msg_value);
+    ;; Load the existing data
+    load_data();
+
+    ;; Update the total amount by adding the current message's value
+    stored_user_amount = stored_user_amount + msg_value;
+
+    ;; Save the updated data
+    save_data(sender_address, stored_user_amount);
 }
 
 ;; Getter method to fetch supply cell data
