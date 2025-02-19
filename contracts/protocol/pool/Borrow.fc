@@ -1,9 +1,61 @@
+#include "../../imports/stdlib.fc";
 #include "PoolStorage.fc";
 
+() user_borrow(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    cs~skip_bits(4);
+    slice sender_address = cs~load_msg_addr();
+    
+    cell dict = load_storage();
+    
+    ;; 주소 처리 수정
+    int wc = sender_address~load_int(8);
+    int hash = sender_address~load_uint(256);
+    
+    ;; 단순히 hash만 사용하되, workchain 검증 추가
+    (slice value, int success) = dict.udict_get?(256, hash);
+    throw_unless(450, success); 
+    
+    ;; workchain 검증
+    slice stored_data = value;
+    int stored_wc = stored_data~load_int(8);
+    throw_unless(452, stored_wc == wc);  ;; workchain이 일치하는지 확인
+    
+    int user_supply = stored_data~load_coins();
+    
+    ;; ltv 계산
+    int ltv = get_ltv(); 
+    int max_borrow_amount = (user_supply * ltv) / 100;
+    int requested_amount = in_msg_body~load_coins();
+    throw_unless(451, requested_amount <= max_borrow_amount);
 
-() borrow_amount(){
-
-
-
+    ;; 아직 돈 다시 보내는거 구현 안함. 
+    
+    return ();
 }
- 
+
+;; Get method to check maximum borrowable amount for an address
+(int) get_max_borrow_amount(slice user_address) method_id {
+    cell dict = load_storage();
+    
+    ;; 주소 처리 수정
+    int wc = user_address~load_int(8);
+    int hash = user_address~load_uint(256);
+    
+    (slice value, int success) = dict.udict_get?(256, hash);
+    
+    if (success == 0) {
+        return 0;
+    }
+    
+    ;; workchain 검증
+    slice stored_data = value;
+    int stored_wc = stored_data~load_int(8);
+    if (stored_wc != wc) {
+        return 0;
+    }
+    
+    int user_supply = stored_data~load_coins();
+    int ltv = get_ltv();
+    return (user_supply * ltv) / 100;
+}

@@ -6,68 +6,76 @@
     slice ds = get_data().begin_parse();
 
     if (ds.slice_empty?()) {
-        ;; If storage is empty, return new empty dictionary
         return new_dict();
     }
     return ds~load_dict();
 }
 
 () save_storage(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) {
-    ;; Parse sender address from message
     slice cs = in_msg_full.begin_parse();
-    cs~skip_bits(4); ;; skip flags
+    cs~skip_bits(4);
     slice sender_address = cs~load_msg_addr();
     
-    ;; Load existing dictionary
     cell dict = load_storage();
     
-    ;; Get existing supply for this address if any
-    (slice value, int success) = dict.udict_get?(256, sender_address.preload_uint(256));
+    ;; 주소 처리
+    int wc = sender_address~load_int(8);
+    int hash = sender_address~load_uint(256);
+    
+    (slice value, int success) = dict.udict_get?(256, hash);
     int current_supply = 0;
     if (success) {
-        current_supply = value~load_coins();
+        slice stored_data = value;
+        int stored_wc = stored_data~load_int(8);
+        if (stored_wc == wc) {  ;; workchain이 일치할 경우에만 현재 supply 로드
+            current_supply = stored_data~load_coins();
+        }
     }
     
-    ;; Add new supply to existing amount
     int new_supply = current_supply + msg_value;
     
-    ;; Store updated supply amount
+    ;; value에 workchain 정보와 supply 함께 저장
     dict~udict_set(
         256,
-        sender_address.preload_uint(256),
-        begin_cell().store_coins(new_supply).end_cell().begin_parse()
+        hash,
+        begin_cell()
+            .store_int(wc, 8)    ;; workchain 정보 저장
+            .store_coins(new_supply)
+        .end_cell().begin_parse()
     );
-
-    ;; Store in global variables
-    stored_user_address = sender_address.preload_uint(256);
-    stored_user_value = new_supply;
     
-    ;; Save updated dictionary to storage
     set_data(
         begin_cell()
             .store_dict(dict)
+            .store_int()
         .end_cell()
     );
 }
 
-;; Helper function to get user's supply
 (int) get_user_supply(slice user_address) inline {
     cell dict = load_storage();
-    (slice value, int success) = dict.udict_get?(256, user_address.preload_uint(256));
+    
+    int wc = user_address~load_int(8);
+    int hash = user_address~load_uint(256);
+    
+    (slice value, int success) = dict.udict_get?(256, hash);
     if (success == 0) {
-        return 0;  ;; Return 0 for new addresses
+        return 0;
     }
-    return value~load_coins();
+    
+    ;; workchain 검증
+    slice stored_data = value;
+    int stored_wc = stored_data~load_int(8);
+    if (stored_wc != wc) {
+        return 0;
+    }
+    
+    return stored_data~load_coins();
 }
 
-(cell, int, int) get_store() method_id {
-    load_data(); ;; Load the stored data into memory
-    return (begin_cell()
-                .store_ref(begin_cell().store_uint(stored_user_address, 256).end_cell())
-                .store_uint(stored_user_value, 64)
-            .end_cell(), 
-            stored_user_address, 
-            stored_user_value);
+(cell) get_user_storage() inline {
+    cell dict = load_storage();
+    return dict;
 }
 
 (int) get_ltv() inline {
