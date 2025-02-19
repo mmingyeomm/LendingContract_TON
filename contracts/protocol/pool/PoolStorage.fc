@@ -4,6 +4,7 @@
 ;; Load the storage
 (cell) load_storage() inline {
     slice ds = get_data().begin_parse();
+
     if (ds.slice_empty?()) {
         ;; If storage is empty, return new empty dictionary
         return new_dict();
@@ -32,10 +33,14 @@
     
     ;; Store updated supply amount
     dict~udict_set(
-        256, ;; key length for address (256 bits)
-        sender_address.preload_uint(256), ;; address as key
-        begin_cell().store_coins(new_supply).end_cell().begin_parse() ;; store amount as coins
+        256,
+        sender_address.preload_uint(256),
+        begin_cell().store_coins(new_supply).end_cell().begin_parse()
     );
+
+    ;; Store in global variables
+    stored_user_address = sender_address.preload_uint(256);
+    stored_user_value = new_supply;
     
     ;; Save updated dictionary to storage
     set_data(
@@ -43,8 +48,6 @@
             .store_dict(dict)
         .end_cell()
     );
-    
-    return();
 }
 
 ;; Helper function to get user's supply
@@ -52,11 +55,20 @@
     cell dict = load_storage();
     (slice value, int success) = dict.udict_get?(256, user_address.preload_uint(256));
     if (success == 0) {
-        return 0;
+        return 0;  ;; Return 0 for new addresses
     }
     return value~load_coins();
 }
 
+(cell, int, int) get_store() method_id {
+    load_data(); ;; Load the stored data into memory
+    return (begin_cell()
+                .store_ref(begin_cell().store_uint(stored_user_address, 256).end_cell())
+                .store_uint(stored_user_value, 64)
+            .end_cell(), 
+            stored_user_address, 
+            stored_user_value);
+}
 
 (int) get_ltv() inline {
     return return_ltv();

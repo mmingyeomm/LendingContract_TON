@@ -43,7 +43,7 @@ export class Supply implements Contract {
         address: Address
     ): Promise<bigint> {
         
-        const result = await provider.get('user_supply', [
+        const result = await provider.get('get_supply', [
             { type: 'slice', cell: beginCell().storeAddress(address).endCell() }
         ]);
         
@@ -59,7 +59,16 @@ export class Supply implements Contract {
         return result.stack.readBigNumber();
     }
 
-
+    async getStore(provider: ContractProvider) {
+        const result = (await provider.get('get_store', [])).stack;
+    
+        // Parse the returned values
+        const supplyCell = result.readCell();
+        const userAddress = result.readNumber();
+        const userAmount = result.readNumber();
+    
+        return { supplyCell, userAddress, userAmount };
+    }
 
     async sendSupply(
         provider: ContractProvider,

@@ -3,3 +3,8 @@
 int return_ltv(){
     return 70;
 }
+
+
+int called(){
+    return 111;
+}
