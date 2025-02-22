@@ -109,10 +109,10 @@ export class Main implements Contract {
     
 
     async getStorage(provider: ContractProvider) {
-        const result = (await provider.get('get_storage', [])).stack;
+        const result = await provider.getState();
     
         // Parse the returned values
-        const storageCell = result.readCell();
+        const storageCell = result.state
   
         return { storageCell };
     }

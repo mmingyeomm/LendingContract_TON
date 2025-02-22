@@ -52,7 +52,7 @@
     );
 }
 
-(int) get_user_supply(slice user_address) inline {
+(int) get_user_supply(slice user_address) method_id {
     cell dict = load_storage();
     
     int wc = user_address~load_int(8);
@@ -73,11 +73,11 @@
     return stored_data~load_coins();
 }
 
-(cell) get_user_storage() inline {
+(cell) get_user_storage() method_id  {
     cell dict = load_storage();
     return dict;
 }
 
-(int) get_ltv() inline {
+(int) get_ltv() method_id {
     return return_ltv();
 }
