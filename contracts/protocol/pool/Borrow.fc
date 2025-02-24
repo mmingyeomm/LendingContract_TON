@@ -58,4 +58,6 @@
     int user_supply = stored_data~load_coins();
     int ltv = get_ltv();
     return (user_supply * ltv) / 100;
+    
 }
+
